@@ -1,0 +1,14 @@
+labels:
+  datasource: newrelic
+targets:
+- name: "latency"
+  nrql: "SELECT percentile(duration, 90, 95, 99) from Transaction LIMIT 1000 SINCE 10 minutes ago UNTIL now"
+  key: "percentiles"
+  facets:
+    - name
+- name: "request_count"
+  nrql: "SELECT count(*) FROM Transaction LIMIT 1000 since 10 minutes ago UNTIL now"
+  key: "count"
+  facets:
+    - name
+    - httpResponseCode

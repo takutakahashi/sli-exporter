@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+
+require './newrelic_cli.rb'
+require 'parallel'
+require 'json'
+require 'yaml'
+
+
+
+def to_exporter(title, result_key, result_val, attr_map)
+  output = []
+  if result_val.is_a?(Array) || result_val.is_a?(Hash) then
+    result_val.each do |k, v|
+      attr_str = ""
+      attr_map.each { |ak, av| attr_str += sprintf('%s="%s",', ak, av) }
+      attr_str += sprintf('%s="%s"', result_key, k)
+      exporter_str = "#{title}{#{attr_str}} #{v}"
+      output.append(exporter_str)
+    end
+    return output
+  else
+    attr_str = ""
+    attr_map.each { |ak, av| attr_str += sprintf('%s="%s",', ak, av) }
+    if attr_str.end_with?(",") then
+      attr_str.chop!
+    end
+    exporter_str = "#{title}{#{attr_str}} #{result_val}"
+    return exporter_str
+  end
+end
+
+conf = YAML.load_file("./config.yaml")
+cli = NewRelicInsightsClient.new()
+labels = conf["labels"]
+Parallel.each(conf["targets"]) do |c|
+  nrql = "#{c["nrql"]} facet #{c["facets"].join(", ")}"
+  res = cli.exec(nrql: nrql)
+  b = JSON.parse(res.body)
+  if b["facets"] then
+    b["facets"].each do |f|
+      c["facets"].each_with_index do |name, i|
+        if f["name"].is_a?(Array) then
+          labels[name] = f["name"][i]
+        else
+          labels[name] = f["name"]
+        end
+      end
+      puts to_exporter("sli_#{c['name']}", c['key'], f["results"][0][c['key']], labels)
+    end
+  else
+    puts to_exporter("sli_#{c['name']}", c['key'], b["results"][0][c['key']], labels)
+  end
+end
