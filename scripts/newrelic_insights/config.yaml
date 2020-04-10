@@ -12,3 +12,6 @@ targets:
   facets:
     - name
     - httpResponseCode
+- name: "host_count"
+  nrql: "SELECT uniqueCount(host) FROM Transaction "
+  key: "uniqueCount"

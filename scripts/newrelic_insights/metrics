@@ -33,7 +33,12 @@ conf = YAML.load_file("./config.yaml")
 cli = NewRelicInsightsClient.new()
 labels = conf["labels"]
 Parallel.each(conf["targets"]) do |c|
-  nrql = "#{c["nrql"]} facet #{c["facets"].join(", ")}"
+  facet_query = ""
+  if c["facets"] then
+    facets = c["facets"].join(", ")
+    facet_query = "facet #{facets}"
+  end
+  nrql = "#{c["nrql"]} #{facet_query}"
   res = cli.exec(nrql: nrql)
   b = JSON.parse(res.body)
   if b["facets"] then
